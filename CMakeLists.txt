@@ -6,8 +6,6 @@ project(baxter_cpp)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   baxter_core_msgs
-  cv_bridge
-  image_transport
   roscpp
   sensor_msgs
   tf2
@@ -106,7 +104,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES baxter_cpp
-#  CATKIN_DEPENDS baxter_core_msgs cv_bridge image_transport roscpp sensor_msgs tf2 tf2_ros
+  CATKIN_DEPENDS baxter_core_msgs roscpp sensor_msgs tf2_ros
 #  DEPENDS system_lib
 )
 
@@ -131,15 +129,10 @@ add_library(baxter_cpp
   src/baxter_head.cpp
 )
 
-# Specify libraries to link a library or executable target against
-target_link_libraries(baxter_cpp
-  ${catkin_LIBRARIES}
-)
-
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(baxter_cpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(baxter_cpp ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
 # add_executable(baxter_cpp_node src/baxter_cpp_node.cpp)
