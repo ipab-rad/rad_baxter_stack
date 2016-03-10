@@ -15,9 +15,9 @@ class BaxterHead {
 
   void Nod();
 
-  void Pan(float target, int speed = 50);
+  void Pan(float target, float speed_ratio = 0.5);
 
-  bool PanToFrame(std::string frame_name, int speed = 50);
+  bool PanToFrame(std::string frame_name, float speed_ratio = 0.5);
 
   void SetJointState(const sensor_msgs::JointState& joint_state);
 

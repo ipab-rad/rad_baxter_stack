@@ -25,14 +25,14 @@ void BaxterHead::Nod() {
   head_nod_pub_. publish(msg);
 }
 
-void BaxterHead::Pan(float target, int speed) {
+void BaxterHead::Pan(float target, float speed_ratio) {
   baxter_core_msgs::HeadPanCommand cmd;
   cmd.target = target;
-  cmd.speed = speed;
+  cmd.speed_ratio = speed_ratio;
   head_pan_pub_.publish(cmd);
 }
 
-bool BaxterHead::PanToFrame(std::string frame_name, int speed) {
+bool BaxterHead::PanToFrame(std::string frame_name, float speed_ratio) {
   geometry_msgs::TransformStamped t;
   try {
     t = tf_buffer_.lookupTransform("base", frame_name, ros::Time());
@@ -42,7 +42,7 @@ bool BaxterHead::PanToFrame(std::string frame_name, int speed) {
 
   float target = atan2(t.transform.translation.y, t.transform.translation.x);
 
-  Pan(target, speed);
+  Pan(target, speed_ratio);
 
   return true;
 }
