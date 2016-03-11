@@ -350,7 +350,7 @@ bool BaxterArm::OpenCamera(int width, int height, double fps,
 
 void BaxterArm::SetInnerLED(bool state) {
   stringstream output_name;
-  output_name << name_ << "_itb_light_inner";
+  output_name << name_ << "_inner_light";
 
   baxter_core_msgs::DigitalOutputCommand msg;
   msg.name = output_name.str();
@@ -361,7 +361,7 @@ void BaxterArm::SetInnerLED(bool state) {
 
 void BaxterArm::SetOuterLED(bool state) {
   stringstream output_name;
-  output_name << name_ << "_itb_light_outer";
+  output_name << name_ << "_outer_light";
 
   baxter_core_msgs::DigitalOutputCommand msg;
   msg.name = output_name.str();
