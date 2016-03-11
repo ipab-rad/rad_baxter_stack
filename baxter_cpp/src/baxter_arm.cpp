@@ -375,7 +375,7 @@ bool BaxterArm::IsTargetPoseReached(baxter_core_msgs::JointCommand cmd,
                                     int accuracy_level) {
   double error = 0;
   for (size_t i = 0; i < cmd.command.size(); ++i) {
-    // Find the current state of hte corresponding joint
+    // Find the current state of the corresponding joint
     for (size_t j = 0; j < state.name.size(); ++j) {
       if (state.name[j] == cmd.names[i]) {
         error += pow(cmd.command[i] - state.position[j], 2);
