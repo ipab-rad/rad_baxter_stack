@@ -36,6 +36,16 @@ class BaxterRobot {
                    tf2::Transform offset,
                    bool velocity_control = false);
 
+  void MoveTo(ArmSide side,
+              baxter_core_msgs::JointCommand pose,
+              bool look = false,
+              int accuracy_level = 3);
+
+  void MoveToward(ArmSide side,
+                  tf2::Transform offset,
+                  bool look = false,
+                  int accuracy_level = 3);
+
  private:
   ros::NodeHandle nh_;
   std::string name_;
