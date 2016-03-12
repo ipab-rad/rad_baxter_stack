@@ -198,7 +198,6 @@ void BaxterArm::SaveCalibratedPoses() {
   ofs.close();
 }
 
-
 int BaxterArm::MoveToPose(std::string pose_name, int accuracy_level) {
   auto pose = poses.find(pose_name);
   if (pose == poses.end()) {
@@ -260,6 +259,7 @@ int BaxterArm::MoveToFrame(std::string frame_name,
       for (size_t j = 0; j < joint_state_.name.size(); ++j) {
         if (joint_state_.name[j] == joint_cmd_.names[i]) {
           joint_cmd_.command[i] -= joint_state_.position[j];
+          joint_cmd_.command[i] *= 0.5;
         }
       }
     }
@@ -269,6 +269,58 @@ int BaxterArm::MoveToFrame(std::string frame_name,
 
   return 1;
 }
+
+int BaxterArm::MoveTo(baxter_core_msgs::JointCommand pose, int accuracy_level) {
+  joint_cmd_ = pose;
+
+  if (IsTargetPoseReached(joint_cmd_, joint_state_, accuracy_level)) {
+    return 0;
+  }
+
+  joint_command_pub_.publish(joint_cmd_);
+
+  return 1;
+}
+
+baxter_core_msgs::JointCommand BaxterArm::CalcPose(std::string frame_name,
+                                                   tf2::Transform offset) {
+  bool solution_found = false;
+
+  while (solution_found == false) {
+    solution_found = true;
+    geometry_msgs::PoseStamped offset_pose;
+    offset_pose.header.stamp = ros::Time::now();
+    offset_pose.header.frame_id = frame_name;
+    offset_pose.pose.position.x = offset.getOrigin().x();
+    offset_pose.pose.position.y = offset.getOrigin().y();
+    offset_pose.pose.position.z = offset.getOrigin().z();
+    offset_pose.pose.orientation.x = offset.getRotation().x();
+    offset_pose.pose.orientation.y = offset.getRotation().y();
+    offset_pose.pose.orientation.z = offset.getRotation().z();
+    offset_pose.pose.orientation.w = offset.getRotation().w();
+    ROS_INFO_STREAM("Pose: " << offset_pose);
+
+    baxter_core_msgs::SolvePositionIK ik_srv;
+    ik_srv.request.pose_stamp.push_back(offset_pose);
+    ik_srv.request.seed_mode = ik_srv.request.SEED_CURRENT;
+
+    if (!ik_solver_client_.call(ik_srv)) {
+      ROS_WARN("IK solver not responding.");
+      solution_found = false;
+    }
+
+    if (!ik_srv.response.isValid[0])  {
+      ROS_WARN("IK solver returned invalid solution.");
+      solution_found = false;
+    }
+
+    joint_cmd_.mode = joint_cmd_.POSITION_MODE;
+    joint_cmd_.names = ik_srv.response.joints[0].name;
+    joint_cmd_.command = ik_srv.response.joints[0].position;
+  }
+  return joint_cmd_;
+}
+
 
 bool BaxterArm::CircleCuffButtonState() {
   bool state = circle_cuff_button_state_;
@@ -375,7 +427,7 @@ bool BaxterArm::IsTargetPoseReached(baxter_core_msgs::JointCommand cmd,
                                     int accuracy_level) {
   double error = 0;
   for (size_t i = 0; i < cmd.command.size(); ++i) {
-    // Find the current state of hte corresponding joint
+    // Find the current state of the corresponding joint
     for (size_t j = 0; j < state.name.size(); ++j) {
       if (state.name[j] == cmd.names[i]) {
         error += pow(cmd.command[i] - state.position[j], 2);

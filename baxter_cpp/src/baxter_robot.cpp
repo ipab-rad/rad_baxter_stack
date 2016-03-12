@@ -71,7 +71,7 @@ void BaxterRobot::MoveToPose(ArmSide side,
                              int accuracy_level) {
   BaxterArm& arm = (side == kLeft) ? left_arm_ : right_arm_;
   arm.SetInnerLED(true);
-  while (ros::ok() && arm.MoveToPose(pose_name, accuracy_level) != 0) {
+  while (ros::ok() && arm.MoveToPose(pose_name, accuracy_level) == 1) {
     if (look) {
       head_.PanToFrame((side == kLeft) ? "left_gripper" : "right_gripper");
     }
@@ -95,8 +95,33 @@ void BaxterRobot::MoveToFrame(ArmSide side,
   arm.SetInnerLED(false);
 }
 
+void BaxterRobot::MoveTo(ArmSide side, baxter_core_msgs::JointCommand pose,
+                         bool look, int accuracy_level) {
+  BaxterArm& arm = (side == kLeft) ? left_arm_ : right_arm_;
+  arm.SetInnerLED(true);
+  while (ros::ok() && arm.MoveTo(pose, accuracy_level) == 1) {
+    if (look) {
+      head_.PanToFrame((side == kLeft) ? "left_gripper" : "right_gripper");
+    }
+    ros::spinOnce();
+    rate_.sleep();
+  }
+  arm.SetInnerLED(false);
+}
+
+void BaxterRobot::MoveToward(ArmSide side, tf2::Transform offset,
+                             bool look, int accuracy_level) {
+  BaxterArm& arm = (side == kLeft) ? left_arm_ : right_arm_;
+  baxter_core_msgs::JointCommand pose;
+  pose = arm.CalcPose("right_gripper_base", offset);
+
+  MoveTo(side, pose, look, accuracy_level);
+}
+
 void BaxterRobot::JointStateCallback(
   const sensor_msgs::JointStateConstPtr& joint_state) {
+  // SDK 1.2.0 publishes gripper state separately, if so skip
+  if (joint_state->name.size() != 17) { return; }
   joint_state_ = *joint_state;
   left_arm_.SetJointState(joint_state_);
   right_arm_.SetJointState(joint_state_);
