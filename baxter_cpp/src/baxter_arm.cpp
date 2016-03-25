@@ -96,6 +96,8 @@ void BaxterArm::SetJointState(const sensor_msgs::JointState& joint_state) {
   joint_state_.velocity.clear();
   joint_state_.effort.clear();
 
+  // ROS_INFO_STREAM("ST-Size: " << joint_state.name.size());
+
   for (size_t i = 0; i < joint_state.name.size(); ++i) {
     if (joint_state.name[i].find(name_) == 0) {
       joint_state_.name.push_back(joint_state.name[i]);
@@ -218,7 +220,8 @@ int BaxterArm::MoveToPose(std::string pose_name, int accuracy_level) {
 
 int BaxterArm::MoveToFrame(std::string frame_name,
                            tf2::Transform offset,
-                           bool velocity_control) {
+                           bool velocity_control,
+                           int accuracy) {
   geometry_msgs::PoseStamped offset_pose;
   offset_pose.header.stamp = ros::Time::now();
   offset_pose.header.frame_id = frame_name;
@@ -247,7 +250,7 @@ int BaxterArm::MoveToFrame(std::string frame_name,
   joint_cmd_.names = ik_srv.response.joints[0].name;
   joint_cmd_.command = ik_srv.response.joints[0].position;
 
-  if (IsTargetPoseReached(joint_cmd_, joint_state_, 3)) {
+  if (IsTargetPoseReached(joint_cmd_, joint_state_, accuracy)) {
     return 0;
   }
 
@@ -277,6 +280,20 @@ int BaxterArm::MoveTo(baxter_core_msgs::JointCommand pose, int accuracy_level) {
     return 0;
   }
 
+  // if (velocity_control) {
+  joint_cmd_.mode = joint_cmd_.VELOCITY_MODE;
+  // Update the velocities to be with respect to the current joint position
+  for (size_t i = 0; i < joint_cmd_.command.size(); ++i) {
+    // Find the current state of hte corresponding joint
+    for (size_t j = 0; j < joint_state_.name.size(); ++j) {
+      if (joint_state_.name[j] == joint_cmd_.names[i]) {
+        joint_cmd_.command[i] -= joint_state_.position[j];
+        joint_cmd_.command[i] *= 0.6;
+      }
+    }
+  }
+  // }
+
   joint_command_pub_.publish(joint_cmd_);
 
   return 1;
@@ -298,7 +315,7 @@ baxter_core_msgs::JointCommand BaxterArm::CalcPose(std::string frame_name,
     offset_pose.pose.orientation.y = offset.getRotation().y();
     offset_pose.pose.orientation.z = offset.getRotation().z();
     offset_pose.pose.orientation.w = offset.getRotation().w();
-    ROS_INFO_STREAM("Pose: " << offset_pose);
+    ROS_DEBUG_STREAM("TargetPose: " << offset_pose);
 
     baxter_core_msgs::SolvePositionIK ik_srv;
     ik_srv.request.pose_stamp.push_back(offset_pose);
@@ -422,6 +439,19 @@ void BaxterArm::SetOuterLED(bool state) {
   led_pub_.publish(msg);
 }
 
+double BaxterArm::CalcError(baxter_core_msgs::JointCommand pose) {
+  double error = 0;
+  for (size_t i = 0; i < pose.command.size(); ++i) {
+    // Find the current state of the corresponding joint
+    for (size_t j = 0; j < joint_state_.name.size(); ++j) {
+      if (joint_state_.name[j] == pose.names[i]) {
+        error += pow(pose.command[i] - joint_state_.position[j], 2);
+      }
+    }
+  }
+  return error;
+}
+
 bool BaxterArm::IsTargetPoseReached(baxter_core_msgs::JointCommand cmd,
                                     sensor_msgs::JointState state,
                                     int accuracy_level) {
@@ -444,15 +474,15 @@ bool BaxterArm::IsTargetPoseReached(baxter_core_msgs::JointCommand cmd,
   ee_speed += pow(endpoint_state_.twist.angular.z, 2);
 
   switch (accuracy_level) {
-    case 1: // LOW
-      return error < 0.5 && ee_speed < 0.5;
-    case 2: // MID
-      return error < 0.1 && ee_speed < 0.1;
-    case 3:
-      return error < 0.001 && ee_speed < 0.004;
-    default:
-      ROS_WARN("Unexpected accuracy level");
-      return true;
+  case 1: // LOW
+    return error < 0.5 && ee_speed < 0.5;
+  case 2: // MID
+    return error < 0.1 && ee_speed < 0.1;
+  case 3:
+    return error < 0.0015 && ee_speed < 0.004;
+  default:
+    ROS_WARN("Unexpected accuracy level");
+    return true;
   }
 }
 

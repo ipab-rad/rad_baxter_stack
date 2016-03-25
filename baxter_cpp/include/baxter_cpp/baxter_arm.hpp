@@ -31,10 +31,11 @@ class BaxterArm {
 
   int MoveToPose(std::string pose_name, int accuracy_level);
   int MoveToFrame(std::string frame_name, tf2::Transform offset,
-                  bool velocity_control);
+                  bool velocity_control, int accuracy = 3);
   int MoveTo(baxter_core_msgs::JointCommand pose, int accuracy_level);
   baxter_core_msgs::JointCommand CalcPose(std::string frame_name,
                                           tf2::Transform offset);
+  double CalcError(baxter_core_msgs::JointCommand pose);
 
   bool CircleCuffButtonState();
   bool DashCuffButtonState();

@@ -14,6 +14,7 @@ class BaxterRobot {
  public:
   enum ArmSide {kLeft, kRight};
   enum ArmButton {kCircle, kDash};
+  enum Result {success, working, error, frameLost};
 
   BaxterRobot(ros::NodeHandle& nh, std::string name, double rate);
 
@@ -31,10 +32,15 @@ class BaxterRobot {
                   std::string pose_name,
                   bool look = false,
                   int accuracy_level = 3);
-  void MoveToFrame(ArmSide side,
-                   std::string frame_name,
-                   tf2::Transform offset,
-                   bool velocity_control = false);
+  Result MoveToFrame(ArmSide side,
+                     std::string frame_name,
+                     tf2::Transform offset,
+                     bool velocity_control = false,
+                     int accuracy = 3);
+
+  tf2::Transform CheckBestApproach(ArmSide side,
+                                   std::string frame_name,
+                                   tf2::Transform offset);
 
   void MoveTo(ArmSide side,
               baxter_core_msgs::JointCommand pose,
@@ -46,6 +52,27 @@ class BaxterRobot {
                   bool look = false,
                   int accuracy_level = 3);
 
+  Result MoveToPoseNB(ArmSide side,
+                      std::string pose_name,
+                      bool look = false,
+                      int accuracy_level = 3);
+
+  Result MoveToFrameNB(ArmSide side,
+                       std::string frame_name,
+                       tf2::Transform offset,
+                       bool velocity_control = false,
+                       int accuracy = 3);
+
+  Result MoveToNB(ArmSide side,
+                  baxter_core_msgs::JointCommand pose,
+                  bool look = false,
+                  int accuracy_level = 3);
+
+  baxter_core_msgs::JointCommand CalcOffsetPose(ArmSide side,
+                                                tf2::Transform offset);
+
+  void SetLED(std::string led_name, bool state);
+
  private:
   ros::NodeHandle nh_;
   std::string name_;
@@ -56,6 +83,7 @@ class BaxterRobot {
   BaxterHead head_;
 
   ros::Subscriber joint_state_sub_;
+  ros::Publisher led_pub_;
   sensor_msgs::JointState joint_state_;
 
   void JointStateCallback(const sensor_msgs::JointStateConstPtr& joint_state);
